@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.clockodo.com)",
+      "WebFetch(domain:www.clockodo.com)",
+      "Bash(mkdir:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(cp:*)",
+      "Bash(sips:*)",
+      "WebFetch(domain:docs.n8n.io)",
+      "WebFetch(domain:community.n8n.io)"
+    ],
+    "deny": []
+  }
+}
