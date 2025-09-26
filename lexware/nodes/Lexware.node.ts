@@ -361,7 +361,7 @@ export class Lexware implements INodeType {
 				let responseData;
 				let url = '';
 				let method: IHttpRequestMethods = 'GET';
-				let body: IDataObject | undefined;
+				let body: IDataObject | Buffer | undefined;
 				let headers: IDataObject = {
 					'Authorization': `Bearer ${credentials.apiKey}`,
 					'Accept': 'application/json',
@@ -428,8 +428,36 @@ export class Lexware implements INodeType {
 					}
 				} else if (resource === 'files') {
 					if (operation === 'upload') {
-						// File upload requires special handling - for now, refer to n8n HTTP Request node
-						throw new Error('File upload should be handled using the n8n HTTP Request node with multipart/form-data. See documentation for examples.');
+						method = 'POST';
+						url = 'https://api.lexware.io/v1/files';
+						
+						const binaryDataField = this.getNodeParameter('binaryDataField', i) as string;
+						const fileType = this.getNodeParameter('fileType', i) as string;
+						
+						const binaryData = this.helpers.assertBinaryData(i, binaryDataField);
+						const buffer = Buffer.from(binaryData.data, 'base64');
+						
+						// Create form data manually
+						const boundary = `----formdata-n8n-${Math.random().toString(36)}`;
+						const formDataParts: string[] = [];
+						
+						// Add file part
+						formDataParts.push(`--${boundary}`);
+						formDataParts.push(`Content-Disposition: form-data; name="file"; filename="${binaryData.fileName || 'file'}"`);
+						formDataParts.push(`Content-Type: ${binaryData.mimeType || 'application/octet-stream'}`);
+						formDataParts.push('');
+						
+						// Add type part
+						const fileBuffer = Buffer.concat([
+							Buffer.from(formDataParts.join('\r\n') + '\r\n'),
+							buffer,
+							Buffer.from(`\r\n--${boundary}\r\n`),
+							Buffer.from(`Content-Disposition: form-data; name="type"\r\n\r\n${fileType}\r\n--${boundary}--\r\n`)
+						]);
+						
+						body = fileBuffer;
+						headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+						delete headers['Accept']; // Remove Accept header for file uploads
 					} else if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						url = `https://api.lexware.io/v1/files/${fileId}`;
@@ -462,7 +490,7 @@ export class Lexware implements INodeType {
 					method,
 					url,
 					headers,
-					json: operation !== 'upload' || resource !== 'files',
+					json: !(resource === 'files' && operation === 'upload'),
 				};
 
 				if (body) {

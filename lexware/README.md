@@ -58,7 +58,7 @@ npm install n8n-nodes-lexware
 
 ### 📁 Files
 - **Download**: Download a file by ID
-- **Upload**: Use n8n HTTP Request node (see examples below)
+- **Upload**: Upload files (PDF, images, etc.) with automatic multipart/form-data handling
 
 ## Examples
 
@@ -132,19 +132,26 @@ npm install n8n-nodes-lexware
 }
 ```
 
-### File Upload (Using n8n HTTP Request Node)
-For file uploads, use the n8n HTTP Request node with these settings:
+### File Upload (Using Lexware Node)
+```json
+{
+  "resource": "files",
+  "operation": "upload",
+  "binaryDataField": "data",
+  "fileType": "voucher"
+}
+```
 
-**URL**: `https://api.lexware.io/v1/files`
-**Method**: POST
-**Authentication**: Generic Credential Type → HTTP Header Auth
-**Headers**:
-- `Authorization`: `Bearer YOUR_API_KEY`
-- `Accept`: `application/json`
+### File Download
+```json
+{
+  "resource": "files",
+  "operation": "download",
+  "fileId": "your-file-id"
+}
+```
 
-**Body**: Multipart Form Data
-- `file`: Binary data from previous node
-- `type`: `voucher` (or `invoice`, `creditnote`, `deliverynote`)
+**Note**: For file uploads, ensure the previous node outputs binary data in the specified field (default: "data").
 
 ## API Reference
 
