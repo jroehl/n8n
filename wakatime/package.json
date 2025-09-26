@@ -1,0 +1,55 @@
+{
+  "name": "n8n-nodes-wakatime",
+  "version": "0.1.0",
+  "description": "Custom n8n node for Wakatime API integration",
+  "license": "MIT",
+  "homepage": "https://github.com/jroehl/n8n-nodes-wakatime",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jroehl/n8n-nodes-wakatime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jroehl/n8n-nodes-wakatime/issues"
+  },
+  "keywords": [
+    "n8n",
+    "n8n-node",
+    "wakatime",
+    "time-tracking",
+    "productivity",
+    "analytics"
+  ],
+  "author": "jroehl",
+  "main": "dist/nodes/Wakatime.node.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "pack": "npm run build && npm pack",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "echo \"No linter configured\"",
+    "prepare": "npm run build"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "files": [
+    "dist",
+    "wakatime.svg"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/WakatimeApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Wakatime.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "n8n-workflow": "^1.110.0",
+    "typescript": "^5.9.2"
+  }
+}
