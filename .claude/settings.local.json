@@ -9,7 +9,9 @@
       "Bash(cp:*)",
       "Bash(sips:*)",
       "WebFetch(domain:docs.n8n.io)",
-      "WebFetch(domain:community.n8n.io)"
+      "WebFetch(domain:community.n8n.io)",
+      "WebFetch(domain:developers.lexware.io)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

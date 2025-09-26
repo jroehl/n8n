@@ -1,11 +1,13 @@
 import {
 	ICredentialType,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class ClockodoApi implements ICredentialType {
 	name = 'clockodoApi';
 	displayName = 'Clockodo API';
+	icon: Icon = 'file:../../clockodo.png';
 	documentationUrl = 'https://www.clockodo.com/api/';
 	properties: INodeProperties[] = [
 		{

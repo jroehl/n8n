@@ -14,26 +14,48 @@ Time tracking integration for the Clockodo API.
 - Clock in/out operations
 - User and project management
 
+### 🧾 [Lexware](./lexware/)
+Accounting and invoicing integration for the Lexware API.
+
+**Features:**
+- Complete API coverage (contacts, articles, invoices, credit notes, delivery notes, files)
+- Bearer token authentication
+- CRUD operations for all resources
+- Pagination support
+- File download functionality
+
 ## Quick Deployment
 
-Deploy any custom node to your Docker n8n instance:
+Deploy one or multiple custom nodes to your Docker n8n instance:
 
 ```bash
-./deploy-node.sh <node-directory> [remote-host]
+./deploy-node.sh [OPTIONS] <node-directory1> [node-directory2] ...
 ```
 
 ### Examples
 
 ```bash
-# Deploy Clockodo node to default host (localhost)
+# Deploy single node to default host (localhost)
 ./deploy-node.sh clockodo
 
+# Deploy multiple nodes at once
+./deploy-node.sh clockodo lexware
+
 # Deploy to specific remote host
-./deploy-node.sh clockodo my-docker-host
+./deploy-node.sh -h my-docker-host clockodo lexware
+
+# Deploy with verbose output
+./deploy-node.sh -v --host remote-server clockodo lexware
 
 # Deploy from any path
-./deploy-node.sh /path/to/my-custom-node remote-server
+./deploy-node.sh --host my-server /path/to/custom-node ./relative-path
 ```
+
+### Options
+
+- `-h, --host HOST`: SSH host for deployment (default: localhost)
+- `-v, --verbose`: Enable verbose output for debugging
+- `--help`: Show detailed help message
 
 ## Requirements
 
@@ -62,6 +84,7 @@ Deploy any custom node to your Docker n8n instance:
 
 ```
 ├── clockodo/              # Clockodo n8n node
+├── lexware/             # Lexware n8n node
 ├── deploy-node.sh         # Generic deployment script
 ├── custom-node-installer-workflow.json
 ├── simple-node-upload-workflow.json
