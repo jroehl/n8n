@@ -24,6 +24,16 @@ Accounting and invoicing integration for the Lexware API.
 - Pagination support
 - File download functionality
 
+### 📅 [Working Days](./working-days/)
+Calculate working days and holidays for German states.
+
+**Features:**
+- Day/week/month/year statistics with remaining calculations
+- Custom date range calculations
+- German public holiday integration (Berlin, Brandenburg, Hamburg, Schleswig-Holstein)
+- Configurable working days (default: Mon-Fri)
+- Detailed breakdowns and totals
+
 ## Quick Deployment
 
 Deploy one or multiple custom nodes to your Docker n8n instance:
@@ -39,13 +49,13 @@ Deploy one or multiple custom nodes to your Docker n8n instance:
 ./deploy-node.sh clockodo
 
 # Deploy multiple nodes at once
-./deploy-node.sh clockodo lexware
+./deploy-node.sh clockodo lexware working-days
 
 # Deploy to specific remote host
-./deploy-node.sh -h my-docker-host clockodo lexware
+./deploy-node.sh -h my-docker-host clockodo lexware working-days
 
 # Deploy with verbose output
-./deploy-node.sh -v --host remote-server clockodo lexware
+./deploy-node.sh -v --host remote-server clockodo lexware working-days
 
 # Deploy from any path
 ./deploy-node.sh --host my-server /path/to/custom-node ./relative-path
@@ -84,7 +94,8 @@ Deploy one or multiple custom nodes to your Docker n8n instance:
 
 ```
 ├── clockodo/              # Clockodo n8n node
-├── lexware/             # Lexware n8n node
+├── lexware/               # Lexware n8n node  
+├── working-days/          # Working days calculation node
 ├── deploy-node.sh         # Generic deployment script
 ├── custom-node-installer-workflow.json
 ├── simple-node-upload-workflow.json
