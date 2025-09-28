@@ -163,22 +163,45 @@ build_node() {
     cd "$dir"
     
     verbose_log "Running npm install in $dir"
-    npm install > /dev/null 2>&1 || {
-        error_log "npm install failed for $node_name"
-        return 1
-    }
+    if [ "$VERBOSE" = true ]; then
+        npm install || {
+            error_log "npm install failed for $node_name"
+            return 1
+        }
+    else
+        npm install > /dev/null 2>&1 || {
+            error_log "npm install failed for $node_name"
+            return 1
+        }
+    fi
     
     verbose_log "Running npm run build in $dir"
-    npm run build > /dev/null 2>&1 || {
-        error_log "npm run build failed for $node_name"
-        return 1
-    }
+    if [ "$VERBOSE" = true ]; then
+        npm run build || {
+            error_log "npm run build failed for $node_name"
+            return 1
+        }
+    else
+        npm run build > /dev/null 2>&1 || {
+            error_log "npm run build failed for $node_name"
+            return 1
+        }
+    fi
     
     verbose_log "Running npm pack in $dir"
-    npm pack > /dev/null 2>&1 || {
-        error_log "npm pack failed for $node_name"
-        return 1
-    }
+    if [ "$VERBOSE" = true ]; then
+        npm pack || {
+            error_log "npm pack failed for $node_name (this runs tests via prepack script)"
+            return 1
+        }
+    else
+        # Always show output for npm pack since it includes tests via prepack
+        echo "Running tests and packaging..."
+        npm pack || {
+            error_log "npm pack failed for $node_name (this runs tests via prepack script)"
+            return 1
+        }
+    fi
     
     return 0
 }
