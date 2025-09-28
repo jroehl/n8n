@@ -11,7 +11,11 @@
       "WebFetch(domain:docs.n8n.io)",
       "WebFetch(domain:community.n8n.io)",
       "WebFetch(domain:developers.lexware.io)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:www.api-feiertage.de)",
+      "Bash(npm install:*)",
+      "Bash(npm test)",
+      "Bash(npm run test:coverage:*)"
     ],
     "deny": []
   }
