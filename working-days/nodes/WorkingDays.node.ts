@@ -1,320 +1,326 @@
 import {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	IDataObject,
-} from 'n8n-workflow';
+  IExecuteFunctions,
+  INodeExecutionData,
+  INodeType,
+  INodeTypeDescription,
+  IDataObject,
+} from "n8n-workflow";
 
-import { Day, DAYS } from '../utils/date';
-import { getWorkingDaysStats, State, getStats } from '../utils/workingDays';
+import { DateTime } from "luxon";
+import { Day, DAYS } from "../utils/date";
+import {
+  getWorkingDaysStats,
+  getStats,
+  dateToDateTime,
+  dateTimeToDate,
+} from "../utils/workingDays";
+
+// Helper function to convert DateTime objects in stats to ISO strings
+function convertStatsForOutput(stats: any): any {
+  if (!stats) return stats;
+
+  if (stats.days && Array.isArray(stats.days)) {
+    return {
+      ...stats,
+      days: stats.days.map((day: any) => ({
+        ...day,
+        date: day.date?.toISO ? day.date.toISO() : day.date,
+      })),
+    };
+  }
+
+  return stats;
+}
+
+function convertPeriodStats(periodStats: any, includeBreakdown: boolean): any {
+  return {
+    all: {
+      totals: periodStats.all.totals,
+      ...(includeBreakdown && {
+        workingDays: convertStatsForOutput(periodStats.all.workingDays),
+        holidays: convertStatsForOutput(periodStats.all.holidays),
+      }),
+    },
+    remaining: {
+      totals: periodStats.remaining.totals,
+      ...(includeBreakdown && {
+        workingDays: convertStatsForOutput(periodStats.remaining.workingDays),
+        holidays: convertStatsForOutput(periodStats.remaining.holidays),
+      }),
+    },
+  };
+}
 
 export class WorkingDays implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Working Days',
-		name: 'workingDays',
-		icon: 'file:../../working-days.svg',
-		group: ['transform'],
-		version: 1,
-		description: 'Calculate working days and holidays for German states',
-		defaults: {
-			name: 'Working Days',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		properties: [
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Get Statistics',
-						value: 'getStats',
-						description: 'Get working days statistics for day/week/month/year',
-					},
-					{
-						name: 'Calculate Range',
-						value: 'calculateRange',
-						description: 'Calculate working days for a specific date range',
-					},
-				],
-				default: 'getStats',
-				required: true,
-			},
-			{
-				displayName: 'Reference Date',
-				name: 'referenceDate',
-				type: 'dateTime',
-				displayOptions: {
-					show: {
-						operation: ['getStats'],
-					},
-				},
-				default: '',
-				description: 'The reference date to calculate statistics for (default: today)',
-			},
-			{
-				displayName: 'From Date',
-				name: 'fromDate',
-				type: 'dateTime',
-				displayOptions: {
-					show: {
-						operation: ['calculateRange'],
-					},
-				},
-				default: '',
-				required: true,
-				description: 'Start date of the range',
-			},
-			{
-				displayName: 'To Date',
-				name: 'toDate',
-				type: 'dateTime',
-				displayOptions: {
-					show: {
-						operation: ['calculateRange'],
-					},
-				},
-				default: '',
-				required: true,
-				description: 'End date of the range',
-			},
-			{
-				displayName: 'German State',
-				name: 'state',
-				type: 'options',
-				options: [
-					{
-						name: 'Berlin',
-						value: 'Berlin',
-					},
-					{
-						name: 'Brandenburg',
-						value: 'Brandenburg',
-					},
-					{
-						name: 'Hamburg',
-						value: 'Hamburg',
-					},
-					{
-						name: 'Schleswig-Holstein',
-						value: 'Schleswig-Holstein',
-					},
-				],
-				default: 'Berlin',
-				required: true,
-				description: 'German state for public holiday calculation',
-			},
-			{
-				displayName: 'Working Days',
-				name: 'workingDays',
-				type: 'multiOptions',
-				options: [
-					{
-						name: 'Monday',
-						value: 'Monday',
-					},
-					{
-						name: 'Tuesday',
-						value: 'Tuesday',
-					},
-					{
-						name: 'Wednesday',
-						value: 'Wednesday',
-					},
-					{
-						name: 'Thursday',
-						value: 'Thursday',
-					},
-					{
-						name: 'Friday',
-						value: 'Friday',
-					},
-					{
-						name: 'Saturday',
-						value: 'Saturday',
-					},
-					{
-						name: 'Sunday',
-						value: 'Sunday',
-					},
-				],
-				default: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-				required: true,
-				description: 'Days considered as working days',
-			},
-			{
-				displayName: 'Include Breakdown',
-				name: 'includeBreakdown',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to include detailed day-by-day breakdown in the response',
-			},
-		],
-	};
+  description: INodeTypeDescription = {
+    displayName: "Working Days",
+    name: "workingDays",
+    icon: "file:../../working-days.svg",
+    group: ["transform"],
+    version: 1,
+    description: "Calculate working days and holidays for German states",
+    defaults: {
+      name: "Working Days",
+    },
+    inputs: ["main"],
+    outputs: ["main"],
+    properties: [
+      {
+        displayName: "Operation",
+        name: "operation",
+        type: "options",
+        noDataExpression: true,
+        options: [
+          {
+            name: "Get Statistics",
+            value: "getStats",
+            description: "Get working days statistics for day/week/month/year",
+          },
+          {
+            name: "Calculate Range",
+            value: "calculateRange",
+            description: "Calculate working days for a specific date range",
+          },
+        ],
+        default: "getStats",
+        required: true,
+      },
+      {
+        displayName: "Reference Date",
+        name: "referenceDate",
+        type: "dateTime",
+        displayOptions: {
+          show: {
+            operation: ["getStats"],
+          },
+        },
+        default: "",
+        description:
+          "The reference date to calculate statistics for (default: today)",
+      },
+      {
+        displayName: "From Date",
+        name: "fromDate",
+        type: "dateTime",
+        displayOptions: {
+          show: {
+            operation: ["calculateRange"],
+          },
+        },
+        default: "",
+        required: true,
+        description: "Start date of the range",
+      },
+      {
+        displayName: "To Date",
+        name: "toDate",
+        type: "dateTime",
+        displayOptions: {
+          show: {
+            operation: ["calculateRange"],
+          },
+        },
+        default: "",
+        required: true,
+        description: "End date of the range",
+      },
+      {
+        displayName: "German State",
+        name: "state",
+        type: "options",
+        options: [
+          {
+            name: "Baden-Württemberg",
+            value: "bw",
+          },
+          {
+            name: "Bayern",
+            value: "by",
+          },
+          {
+            name: "Berlin",
+            value: "be",
+          },
+          {
+            name: "Brandenburg",
+            value: "bb",
+          },
+          {
+            name: "Bremen",
+            value: "hb",
+          },
+          {
+            name: "Hamburg",
+            value: "hh",
+          },
+          {
+            name: "Hessen",
+            value: "he",
+          },
+          {
+            name: "Mecklenburg-Vorpommern",
+            value: "mv",
+          },
+          {
+            name: "Niedersachsen",
+            value: "ni",
+          },
+          {
+            name: "Nordrhein-Westfalen",
+            value: "nw",
+          },
+          {
+            name: "Rheinland-Pfalz",
+            value: "rp",
+          },
+          {
+            name: "Saarland",
+            value: "sl",
+          },
+          {
+            name: "Sachsen",
+            value: "sn",
+          },
+          {
+            name: "Sachsen-Anhalt",
+            value: "st",
+          },
+          {
+            name: "Schleswig-Holstein",
+            value: "sh",
+          },
+          {
+            name: "Thüringen",
+            value: "th",
+          },
+        ],
+        default: "be",
+        required: true,
+        description: "German state for public holiday calculation",
+      },
+      {
+        displayName: "Working Days",
+        name: "workingDays",
+        type: "multiOptions",
+        options: DAYS.map((day) => ({ name: day, value: day })),
+        default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        required: true,
+        description: "Days considered as working days",
+      },
+      {
+        displayName: "Include Breakdown",
+        name: "includeBreakdown",
+        type: "boolean",
+        default: true,
+        description:
+          "Whether to include detailed day-by-day breakdown in the response",
+      },
+    ],
+  };
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const items = this.getInputData();
+    const returnData: IDataObject[] = [];
 
-		for (let i = 0; i < items.length; i++) {
-			try {
-				const operation = this.getNodeParameter('operation', i) as string;
-				const state = this.getNodeParameter('state', i) as State;
-				const workingDays = this.getNodeParameter('workingDays', i) as Day[];
-				const includeBreakdown = this.getNodeParameter('includeBreakdown', i) as boolean;
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const operation = this.getNodeParameter("operation", i) as string;
+        const state = this.getNodeParameter("state", i) as string;
+        const workingDays = this.getNodeParameter("workingDays", i) as Day[];
+        const includeBreakdown = this.getNodeParameter(
+          "includeBreakdown",
+          i,
+        ) as boolean;
 
-				let result: IDataObject;
+        let result: IDataObject;
 
-				if (operation === 'getStats') {
-					const referenceDateParam = this.getNodeParameter('referenceDate', i, '') as string;
-					const referenceDate = referenceDateParam ? new Date(referenceDateParam) : new Date();
+        if (operation === "getStats") {
+          const referenceDateParam = this.getNodeParameter(
+            "referenceDate",
+            i,
+            "",
+          ) as string;
+          const referenceDate = referenceDateParam
+            ? DateTime.fromISO(referenceDateParam)
+            : DateTime.now();
 
-					const stats = await getWorkingDaysStats(referenceDate, state, workingDays);
+          const stats = await getWorkingDaysStats(
+            referenceDate,
+            state,
+            workingDays,
+            this.helpers,
+          );
 
-					result = {
-						operation: 'getStats',
-						referenceDate: referenceDate.toISOString(),
-						state,
-						workingDays,
-						statistics: {
-							day: {
-								all: {
-									totals: stats.day.all.totals,
-									...(includeBreakdown && {
-										workingDays: stats.day.all.workingDays,
-										holidays: stats.day.all.holidays,
-									}),
-								},
-								remaining: {
-									totals: stats.day.remaining.totals,
-									...(includeBreakdown && {
-										workingDays: stats.day.remaining.workingDays,
-										holidays: stats.day.remaining.holidays,
-									}),
-								},
-							},
-							week: {
-								all: {
-									totals: stats.week.all.totals,
-									...(includeBreakdown && {
-										workingDays: stats.week.all.workingDays,
-										holidays: stats.week.all.holidays,
-									}),
-								},
-								remaining: {
-									totals: stats.week.remaining.totals,
-									...(includeBreakdown && {
-										workingDays: stats.week.remaining.workingDays,
-										holidays: stats.week.remaining.holidays,
-									}),
-								},
-							},
-							month: {
-								all: {
-									totals: stats.month.all.totals,
-									...(includeBreakdown && {
-										workingDays: stats.month.all.workingDays,
-										holidays: stats.month.all.holidays,
-									}),
-								},
-								remaining: {
-									totals: stats.month.remaining.totals,
-									...(includeBreakdown && {
-										workingDays: stats.month.remaining.workingDays,
-										holidays: stats.month.remaining.holidays,
-									}),
-								},
-							},
-							year: {
-								all: {
-									totals: stats.year.all.totals,
-									...(includeBreakdown && {
-										workingDays: stats.year.all.workingDays,
-										holidays: stats.year.all.holidays,
-									}),
-								},
-								remaining: {
-									totals: stats.year.remaining.totals,
-									...(includeBreakdown && {
-										workingDays: stats.year.remaining.workingDays,
-										holidays: stats.year.remaining.holidays,
-									}),
-								},
-							},
-						},
-					};
-				} else {
-					// calculateRange
-					const fromDateParam = this.getNodeParameter('fromDate', i) as string;
-					const toDateParam = this.getNodeParameter('toDate', i) as string;
-					const fromDate = new Date(fromDateParam);
-					const toDate = new Date(toDateParam);
+          result = {
+            operation: "getStats",
+            referenceDate: referenceDate.toISO(),
+            state,
+            workingDays,
+            statistics: {
+              day: convertPeriodStats(stats.day, includeBreakdown),
+              week: convertPeriodStats(stats.week, includeBreakdown),
+              month: convertPeriodStats(stats.month, includeBreakdown),
+              year: convertPeriodStats(stats.year, includeBreakdown),
+            },
+          };
+        } else {
+          // calculateRange
+          const fromDateParam = this.getNodeParameter("fromDate", i) as string;
+          const toDateParam = this.getNodeParameter("toDate", i) as string;
+          const fromDate = DateTime.fromISO(fromDateParam);
+          const toDate = DateTime.fromISO(toDateParam);
 
-					// For range calculation, we need to fetch holidays for the entire range
-					const { fetchJSON } = await import('../utils/fetchJSON');
-					
-					const years = [
-						...new Set([fromDate.getFullYear(), toDate.getFullYear()]),
-					].join(',');
-					
-					const stateMapping: Record<State, string> = {
-						Berlin: 'be',
-						Brandenburg: 'bb',
-						Hamburg: 'hh',
-						'Schleswig-Holstein': 'sh',
-					};
-					
-					const stateCode = stateMapping[state];
-					const url = `https://get.api-feiertage.de/?years=${years}&states=${stateCode}`;
-					
-					const holidayResponse = await fetchJSON<{
-						status: string;
-						feiertage: Array<{ date: string; fname: string }>;
-					}>(url, {
-						withCache: true,
-						cacheExpirationMinutes: 10080, // 7 days
-					});
+          // For range calculation, we need to fetch holidays for the entire range
+          const years = [...new Set([fromDate.year, toDate.year])].join(",");
 
-					if (!holidayResponse || holidayResponse.status !== 'success') {
-						throw new Error('Failed to fetch holiday data');
-					}
+          const url = `https://get.api-feiertage.de/?years=${years}&states=${state}`;
 
-					const holidays = holidayResponse.feiertage.map(({ date, fname }) => ({
-						date: new Date(date),
-						name: fname,
-					}));
+          const holidayResponse = (await this.helpers.httpRequest({
+            url,
+            method: "GET",
+            json: true,
+          })) as {
+            status: string;
+            feiertage: Array<{ date: string; fname: string }>;
+          };
 
-					const stats = getStats(holidays, fromDate, toDate, workingDays);
+          if (!holidayResponse || holidayResponse.status !== "success") {
+            throw new Error("Failed to fetch holiday data");
+          }
 
-					result = {
-						operation: 'calculateRange',
-						fromDate: fromDate.toISOString(),
-						toDate: toDate.toISOString(),
-						state,
-						workingDays,
-						statistics: {
-							totals: stats.totals,
-							...(includeBreakdown && {
-								workingDays: stats.workingDays,
-								holidays: stats.holidays,
-							}),
-						},
-					};
-				}
+          const holidays = holidayResponse.feiertage.map(({ date, fname }) => ({
+            date: DateTime.fromISO(date),
+            name: fname,
+          }));
 
-				returnData.push(result);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: (error as Error).message });
-					continue;
-				}
-				throw error;
-			}
-		}
+          const stats = getStats(holidays, fromDate, toDate, workingDays);
 
-		return [this.helpers.returnJsonArray(returnData)];
-	}
+          result = {
+            operation: "calculateRange",
+            fromDate: fromDate.toISO(),
+            toDate: toDate.toISO(),
+            state,
+            workingDays,
+            statistics: {
+              totals: stats.totals,
+              ...(includeBreakdown && {
+                workingDays: convertStatsForOutput(stats.workingDays),
+                holidays: convertStatsForOutput(stats.holidays),
+              }),
+            },
+          };
+        }
+
+        returnData.push(result);
+      } catch (error) {
+        if (this.continueOnFail()) {
+          returnData.push({ error: (error as Error).message });
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    return [this.helpers.returnJsonArray(returnData)];
+  }
 }

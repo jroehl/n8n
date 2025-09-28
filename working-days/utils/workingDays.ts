@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import {
   Day,
   DAYS,
@@ -6,17 +7,22 @@ import {
   getFirstAndLastDayOfYear,
   getFirstAndLastTimeOfDay,
   getIsoFormattedDay,
-  getTimeZoneOffset,
+  dateToDateTime,
+  dateTimeToDate,
+  getWeekdayIndex,
 } from './date';
-import { fetchJSON } from './fetchJSON';
 
-export type State = 'Berlin' | 'Brandenburg' | 'Hamburg' | 'Schleswig-Holstein';
-const STATE_MAPPING: Record<State, string> = {
-  Berlin: 'be',
-  Brandenburg: 'bb',
-  Hamburg: 'hh',
-  'Schleswig-Holstein': 'sh',
-} as const;
+// Re-export conversion functions for use in the node
+export { dateToDateTime, dateTimeToDate };
+
+// HTTP request helper type for dependency injection
+export interface HttpRequestHelper {
+  httpRequest(options: {
+    url: string;
+    method: 'GET';
+    json: boolean;
+  }): Promise<any>;
+}
 
 interface Stats {
   total: number;
@@ -24,7 +30,7 @@ interface Stats {
 }
 
 interface EnrichedDay {
-  date: Date;
+  date: DateTime;
   day: Day;
   name?: string;
 }
@@ -40,40 +46,32 @@ export interface WorkingDaysResponse {
 }
 
 function getWorkingDays(
-  fromDate: Date,
-  toDate: Date,
+  fromDate: DateTime,
+  toDate: DateTime,
   workingDays: readonly Day[]
 ): Stats {
-  const from = new Date(
-    fromDate.getFullYear(),
-    fromDate.getMonth(),
-    fromDate.getDate(),
-    getTimeZoneOffset(fromDate)
-  );
-  const to = new Date(
-    toDate.getFullYear(),
-    toDate.getMonth(),
-    toDate.getDate()
-  );
+  const from = fromDate.startOf('day');
+  const to = toDate.startOf('day');
 
   const days: Stats['days'] = [];
   let numOfWorkingDays = 0;
   const dayIndexes = workingDays.map((day) => DAYS.indexOf(day));
 
-  while (from <= to) {
-    const day = from.getDay();
-    if (dayIndexes.includes(day)) {
-      days.push({ date: new Date(from), day: DAYS[day] });
+  let current = from;
+  while (current <= to) {
+    const dayIndex = getWeekdayIndex(current);
+    if (dayIndexes.includes(dayIndex)) {
+      days.push({ date: current, day: DAYS[dayIndex] });
       numOfWorkingDays++;
     }
-    from.setDate(from.getDate() + 1);
+    current = current.plus({ days: 1 });
   }
   return { total: numOfWorkingDays, days };
 }
 
 function getHolidays(
-  fromDate: Date,
-  toDate: Date,
+  fromDate: DateTime,
+  toDate: DateTime,
   holidays: Omit<EnrichedDay, 'day'>[]
 ): Stats {
   const days = holidays
@@ -82,7 +80,7 @@ function getHolidays(
       return {
         date,
         name,
-        day: DAYS[date.getDay()],
+        day: DAYS[getWeekdayIndex(date)],
       };
     });
 
@@ -90,9 +88,10 @@ function getHolidays(
 }
 
 async function fetchHolidays(
-  fromDate: Date,
-  toDate: Date,
-  state: State
+  fromDate: DateTime,
+  toDate: DateTime,
+  stateCode: string,
+  httpRequestHelper: HttpRequestHelper
 ): Promise<Omit<EnrichedDay, 'day'>[]> {
   interface Feiertage {
     date: string;
@@ -118,31 +117,31 @@ async function fetchHolidays(
   }
 
   const years = [
-    ...new Set([fromDate.getFullYear(), toDate.getFullYear()]),
+    ...new Set([fromDate.year, toDate.year]),
   ].join(',');
-  const states = STATE_MAPPING[state];
 
-  const url = `https://get.api-feiertage.de/?years=${years}&states=${states}`;
-  const res = await fetchJSON<{
+  const url = `https://get.api-feiertage.de/?years=${years}&states=${stateCode}`;
+  const res = await httpRequestHelper.httpRequest({
+    url,
+    method: 'GET',
+    json: true,
+  }) as {
     status: string;
     feiertage: Feiertage[];
-  }>(url, {
-    withCache: true,
-    cacheExpirationMinutes: 10080, // 7 days
-  });
+  };
 
-  if (res?.status !== 'success') throw new Error(`Feiertage API error ${res}`);
+  if (res?.status !== 'success') throw new Error(`Feiertage API error ${JSON.stringify(res)}`);
 
   return res.feiertage.map(({ date, fname }) => ({
-    date: new Date(date),
+    date: DateTime.fromISO(date),
     name: fname,
   }));
 }
 
 export function getStats(
   allHolidays: Omit<EnrichedDay, 'day'>[],
-  fromDate: Date,
-  toDate: Date,
+  fromDate: DateTime,
+  toDate: DateTime,
   workingDays: readonly Day[]
 ): WorkingDaysResponse {
   const holidaysStats = getHolidays(fromDate, toDate, allHolidays);
@@ -172,20 +171,21 @@ export interface WorkingDaysResponseWithRemaining {
 
 function getWorkingStatsWithRemaining(
   holidays: Omit<EnrichedDay, 'day'>[],
-  from: Date,
-  to: Date,
+  from: DateTime,
+  to: DateTime,
   workingDays: readonly Day[]
 ): WorkingDaysResponseWithRemaining {
   return {
     all: getStats(holidays, from, to, workingDays),
-    remaining: getStats(holidays, new Date(), to, workingDays),
+    remaining: getStats(holidays, DateTime.now(), to, workingDays),
   };
 }
 
 export async function getWorkingDaysStats(
-  requestDate: Date,
-  state: State,
-  workingDays: readonly Day[]
+  requestDate: DateTime,
+  stateCode: string,
+  workingDays: readonly Day[],
+  httpRequestHelper: HttpRequestHelper
 ): Promise<{
   day: WorkingDaysResponseWithRemaining;
   week: WorkingDaysResponseWithRemaining;
@@ -193,7 +193,7 @@ export async function getWorkingDaysStats(
   year: WorkingDaysResponseWithRemaining;
 }> {
   const [firstDayYear, lastDayYear] = getFirstAndLastDayOfYear(requestDate);
-  const holidays = await fetchHolidays(firstDayYear, lastDayYear, state);
+  const holidays = await fetchHolidays(firstDayYear, lastDayYear, stateCode, httpRequestHelper);
 
   const [firstDayMonth, lastDayMonth] = getFirstAndLastDayOfMonth(requestDate);
   const month = getWorkingStatsWithRemaining(

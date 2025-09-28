@@ -1,3 +1,5 @@
+import { DateTime } from 'luxon';
+
 export type Day = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 
 export const DAYS: readonly Day[] = [
@@ -10,53 +12,54 @@ export const DAYS: readonly Day[] = [
   'Saturday'
 ] as const;
 
-export function getTimeZoneOffset(date: Date): number {
-  return date.getTimezoneOffset() / 60;
+export function getTimeZoneOffset(date: DateTime): number {
+  // Luxon automatically handles timezone offsets
+  return date.offset / 60;
 }
 
-export function getIsoFormattedDay(date: Date): string {
-  return date.toISOString().split('T')[0];
+export function getIsoFormattedDay(date: DateTime): string {
+  return date.toISODate()!;
 }
 
-export function getFirstAndLastTimeOfDay(date: Date): [Date, Date] {
-  const firstTime = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    0, 0, 0, 0
-  );
-  const lastTime = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    23, 59, 59, 999
-  );
+export function getFirstAndLastTimeOfDay(date: DateTime): [DateTime, DateTime] {
+  const firstTime = date.startOf('day');
+  const lastTime = date.endOf('day');
   return [firstTime, lastTime];
 }
 
-export function getFirstAndLastDayOfMonth(date: Date): [Date, Date] {
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+export function getFirstAndLastDayOfMonth(date: DateTime): [DateTime, DateTime] {
+  const firstDay = date.startOf('month');
+  const lastDay = date.endOf('month').startOf('day');
   return [firstDay, lastDay];
 }
 
-export function getFirstAndLastDayOfYear(date: Date): [Date, Date] {
-  const firstDay = new Date(date.getFullYear(), 0, 1);
-  const lastDay = new Date(date.getFullYear(), 11, 31);
+export function getFirstAndLastDayOfYear(date: DateTime): [DateTime, DateTime] {
+  const firstDay = date.startOf('year');
+  const lastDay = date.endOf('year').startOf('day');
   return [firstDay, lastDay];
 }
 
-export function getFirstAndLastDayOfWeekWithinMonthAndYear(date: Date): [Date, Date] {
-  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
-  // Calculate the start of the week (Monday)
-  const startOfWeek = new Date(date);
-  const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-  startOfWeek.setDate(diff);
-  
-  // Calculate the end of the week (Sunday)
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
+export function getFirstAndLastDayOfWeekWithinMonthAndYear(date: DateTime): [DateTime, DateTime] {
+  // Luxon uses ISO weeks (Monday = 1, Sunday = 7)
+  const startOfWeek = date.startOf('week');
+  const endOfWeek = date.endOf('week').startOf('day');
   
   return [startOfWeek, endOfWeek];
+}
+
+// Helper function to convert JS Date to Luxon DateTime
+export function dateToDateTime(date: Date): DateTime {
+  return DateTime.fromJSDate(date);
+}
+
+// Helper function to convert Luxon DateTime to JS Date
+export function dateTimeToDate(dateTime: DateTime): Date {
+  return dateTime.toJSDate();
+}
+
+// Helper function to get weekday index (0 = Sunday, 6 = Saturday) for compatibility
+export function getWeekdayIndex(date: DateTime): number {
+  // Luxon: Monday = 1, Sunday = 7
+  // JS Date: Sunday = 0, Monday = 1
+  return date.weekday === 7 ? 0 : date.weekday;
 }
