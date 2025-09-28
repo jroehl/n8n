@@ -58,6 +58,10 @@ export class Lexware implements INodeType {
 						name: 'File',
 						value: 'files',
 					},
+					{
+						name: 'Voucher List',
+						value: 'voucherlist',
+					},
 				],
 				default: 'contacts',
 				required: true,
@@ -183,6 +187,25 @@ export class Lexware implements INodeType {
 				],
 				default: 'upload',
 			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get voucher list with filtering options',
+					},
+				],
+				default: 'getAll',
+			},
 			// Contact ID field
 			{
 				displayName: 'Contact ID',
@@ -304,6 +327,46 @@ export class Lexware implements INodeType {
 				default: '',
 				description: 'Search term to filter results (optional)',
 			},
+			// Additional query parameters
+			{
+				displayName: 'Additional Query Parameters',
+				name: 'additionalQueryParams',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						resource: ['contacts', 'articles', 'invoices', 'credit-notes', 'delivery-notes'],
+						operation: ['getAll'],
+					},
+				},
+				default: {},
+				placeholder: 'Add Query Parameter',
+				options: [
+					{
+						name: 'parameters',
+						displayName: 'Parameter',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the query parameter',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the query parameter',
+							},
+						],
+					},
+				],
+				description: 'Add custom query parameters as specified in the Lexware API documentation',
+			},
 			{
 				displayName: 'Page',
 				name: 'page',
@@ -324,6 +387,159 @@ export class Lexware implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['contacts', 'articles', 'invoices', 'credit-notes', 'delivery-notes'],
+						operation: ['getAll'],
+					},
+				},
+				default: 25,
+				description: 'Number of items per page (max 250)',
+			},
+			// Voucherlist specific fields
+			{
+				displayName: 'Voucher Date From',
+				name: 'voucherDateFrom',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+						operation: ['getAll'],
+					},
+				},
+				default: '',
+				description: 'Filter vouchers from this date (YYYY-MM-DD)',
+			},
+			{
+				displayName: 'Voucher Date To',
+				name: 'voucherDateTo',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+						operation: ['getAll'],
+					},
+				},
+				default: '',
+				description: 'Filter vouchers until this date (YYYY-MM-DD)',
+			},
+			{
+				displayName: 'Voucher Status',
+				name: 'voucherStatus',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+						operation: ['getAll'],
+					},
+				},
+				options: [
+					{
+						name: 'Any',
+						value: '',
+					},
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Paid',
+						value: 'paid',
+					},
+					{
+						name: 'Overdue',
+						value: 'overdue',
+					},
+					{
+						name: 'Voided',
+						value: 'voided',
+					},
+				],
+				default: '',
+				description: 'Filter by voucher status',
+			},
+			{
+				displayName: 'Voucher Type',
+				name: 'voucherType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+						operation: ['getAll'],
+					},
+				},
+				options: [
+					{
+						name: 'Any',
+						value: '',
+					},
+					{
+						name: 'Invoice',
+						value: 'invoice',
+					},
+					{
+						name: 'Sales Invoice',
+						value: 'salesinvoice',
+					},
+					{
+						name: 'Sales Credit Note',
+						value: 'salescreditnote',
+					},
+					{
+						name: 'Purchase Invoice',
+						value: 'purchaseinvoice',
+					},
+					{
+						name: 'Purchase Credit Note',
+						value: 'purchasecreditnote',
+					},
+					{
+						name: 'Delivery Note',
+						value: 'deliverynote',
+					},
+					{
+						name: 'Invoice Receipt',
+						value: 'invoicereceipt',
+					},
+				],
+				default: '',
+				description: 'Filter by voucher type',
+			},
+			{
+				displayName: 'Archived',
+				name: 'archived',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+						operation: ['getAll'],
+					},
+				},
+				default: false,
+				description: 'Whether to include archived vouchers',
+			},
+			// Enhanced pagination for voucherlist
+			{
+				displayName: 'Page',
+				name: 'voucherPage',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
+						operation: ['getAll'],
+					},
+				},
+				default: 0,
+				description: 'Page number for pagination (optional)',
+			},
+			{
+				displayName: 'Size',
+				name: 'voucherSize',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['voucherlist'],
 						operation: ['getAll'],
 					},
 				},
@@ -389,10 +605,20 @@ export class Lexware implements INodeType {
 						const searchTerm = this.getNodeParameter('searchTerm', i, '') as string;
 						const page = this.getNodeParameter('page', i, 0) as number;
 						const size = this.getNodeParameter('size', i, 25) as number;
+						const additionalParams = this.getNodeParameter('additionalQueryParams', i, { parameters: [] }) as IDataObject;
 
 						if (searchTerm) queryParams.push(`email=${encodeURIComponent(searchTerm)}`);
 						if (page > 0) queryParams.push(`page=${page}`);
 						if (size !== 25) queryParams.push(`size=${size}`);
+
+						// Add additional query parameters
+						if (additionalParams.parameters && Array.isArray(additionalParams.parameters)) {
+							for (const param of additionalParams.parameters as IDataObject[]) {
+								if (param.name && param.value) {
+									queryParams.push(`${encodeURIComponent(param.name as string)}=${encodeURIComponent(param.value as string)}`);
+								}
+							}
+						}
 
 						const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
 						url = `https://api.lexware.io/v1/contacts${queryString}`;
@@ -418,10 +644,20 @@ export class Lexware implements INodeType {
 						const searchTerm = this.getNodeParameter('searchTerm', i, '') as string;
 						const page = this.getNodeParameter('page', i, 0) as number;
 						const size = this.getNodeParameter('size', i, 25) as number;
+						const additionalParams = this.getNodeParameter('additionalQueryParams', i, { parameters: [] }) as IDataObject;
 
 						if (searchTerm) queryParams.push(`title=${encodeURIComponent(searchTerm)}`);
 						if (page > 0) queryParams.push(`page=${page}`);
 						if (size !== 25) queryParams.push(`size=${size}`);
+
+						// Add additional query parameters
+						if (additionalParams.parameters && Array.isArray(additionalParams.parameters)) {
+							for (const param of additionalParams.parameters as IDataObject[]) {
+								if (param.name && param.value) {
+									queryParams.push(`${encodeURIComponent(param.name as string)}=${encodeURIComponent(param.value as string)}`);
+								}
+							}
+						}
 
 						const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
 						url = `https://api.lexware.io/v1/articles${queryString}`;
@@ -462,6 +698,34 @@ export class Lexware implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						url = `https://api.lexware.io/v1/files/${fileId}`;
 					}
+				} else if (resource === 'voucherlist') {
+					// Voucherlist endpoint
+					const queryParams: string[] = [];
+					
+					const voucherDateFrom = this.getNodeParameter('voucherDateFrom', i, '') as string;
+					const voucherDateTo = this.getNodeParameter('voucherDateTo', i, '') as string;
+					const voucherStatus = this.getNodeParameter('voucherStatus', i, '') as string;
+					const voucherType = this.getNodeParameter('voucherType', i, '') as string;
+					const archived = this.getNodeParameter('archived', i, false) as boolean;
+					const page = this.getNodeParameter('voucherPage', i, 0) as number;
+					const size = this.getNodeParameter('voucherSize', i, 25) as number;
+
+					if (voucherDateFrom) {
+						const dateFrom = new Date(voucherDateFrom).toISOString().split('T')[0];
+						queryParams.push(`voucherDateFrom=${dateFrom}`);
+					}
+					if (voucherDateTo) {
+						const dateTo = new Date(voucherDateTo).toISOString().split('T')[0];
+						queryParams.push(`voucherDateTo=${dateTo}`);
+					}
+					if (voucherStatus) queryParams.push(`voucherStatus=${voucherStatus}`);
+					if (voucherType) queryParams.push(`voucherType=${voucherType}`);
+					if (archived) queryParams.push(`archived=${archived}`);
+					if (page > 0) queryParams.push(`page=${page}`);
+					if (size !== 25) queryParams.push(`size=${size}`);
+
+					const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+					url = `https://api.lexware.io/v1/voucherlist${queryString}`;
 				} else {
 					// invoices, credit-notes, delivery-notes
 					if (operation === 'get') {
@@ -477,9 +741,19 @@ export class Lexware implements INodeType {
 						const queryParams: string[] = [];
 						const page = this.getNodeParameter('page', i, 0) as number;
 						const size = this.getNodeParameter('size', i, 25) as number;
+						const additionalParams = this.getNodeParameter('additionalQueryParams', i, { parameters: [] }) as IDataObject;
 
 						if (page > 0) queryParams.push(`page=${page}`);
 						if (size !== 25) queryParams.push(`size=${size}`);
+
+						// Add additional query parameters
+						if (additionalParams.parameters && Array.isArray(additionalParams.parameters)) {
+							for (const param of additionalParams.parameters as IDataObject[]) {
+								if (param.name && param.value) {
+									queryParams.push(`${encodeURIComponent(param.name as string)}=${encodeURIComponent(param.value as string)}`);
+								}
+							}
+						}
 
 						const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
 						url = `https://api.lexware.io/v1/${resource}${queryString}`;
