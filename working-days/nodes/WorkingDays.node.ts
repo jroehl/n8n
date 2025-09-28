@@ -51,6 +51,72 @@ function convertPeriodStats(periodStats: any, includeBreakdown: boolean): any {
   };
 }
 
+const stateMap = [
+  {
+    name: "Baden-Württemberg",
+    value: "bw",
+  },
+  {
+    name: "Bayern",
+    value: "by",
+  },
+  {
+    name: "Berlin",
+    value: "be",
+  },
+  {
+    name: "Brandenburg",
+    value: "bb",
+  },
+  {
+    name: "Bremen",
+    value: "hb",
+  },
+  {
+    name: "Hamburg",
+    value: "hh",
+  },
+  {
+    name: "Hessen",
+    value: "he",
+  },
+  {
+    name: "Mecklenburg-Vorpommern",
+    value: "mv",
+  },
+  {
+    name: "Niedersachsen",
+    value: "ni",
+  },
+  {
+    name: "Nordrhein-Westfalen",
+    value: "nw",
+  },
+  {
+    name: "Rheinland-Pfalz",
+    value: "rp",
+  },
+  {
+    name: "Saarland",
+    value: "sl",
+  },
+  {
+    name: "Sachsen",
+    value: "sn",
+  },
+  {
+    name: "Sachsen-Anhalt",
+    value: "st",
+  },
+  {
+    name: "Schleswig-Holstein",
+    value: "sh",
+  },
+  {
+    name: "Thüringen",
+    value: "th",
+  },
+];
 export class WorkingDays implements INodeType {
   description: INodeTypeDescription = {
     displayName: "Working Days",
@@ -128,72 +194,7 @@ export class WorkingDays implements INodeType {
         displayName: "German State",
         name: "state",
         type: "options",
-        options: [
-          {
-            name: "Baden-Württemberg",
-            value: "bw",
-          },
-          {
-            name: "Bayern",
-            value: "by",
-          },
-          {
-            name: "Berlin",
-            value: "be",
-          },
-          {
-            name: "Brandenburg",
-            value: "bb",
-          },
-          {
-            name: "Bremen",
-            value: "hb",
-          },
-          {
-            name: "Hamburg",
-            value: "hh",
-          },
-          {
-            name: "Hessen",
-            value: "he",
-          },
-          {
-            name: "Mecklenburg-Vorpommern",
-            value: "mv",
-          },
-          {
-            name: "Niedersachsen",
-            value: "ni",
-          },
-          {
-            name: "Nordrhein-Westfalen",
-            value: "nw",
-          },
-          {
-            name: "Rheinland-Pfalz",
-            value: "rp",
-          },
-          {
-            name: "Saarland",
-            value: "sl",
-          },
-          {
-            name: "Sachsen",
-            value: "sn",
-          },
-          {
-            name: "Sachsen-Anhalt",
-            value: "st",
-          },
-          {
-            name: "Schleswig-Holstein",
-            value: "sh",
-          },
-          {
-            name: "Thüringen",
-            value: "th",
-          },
-        ],
+        options: stateMap,
         default: "be",
         required: true,
         description: "German state for public holiday calculation",
@@ -226,6 +227,8 @@ export class WorkingDays implements INodeType {
       try {
         const operation = this.getNodeParameter("operation", i) as string;
         const state = this.getNodeParameter("state", i) as string;
+        const stateCode =
+          stateMap.find((s) => s.name === state)?.value || state;
         const workingDays = this.getNodeParameter("workingDays", i) as Day[];
         const includeBreakdown = this.getNodeParameter(
           "includeBreakdown",
@@ -246,7 +249,7 @@ export class WorkingDays implements INodeType {
 
           const stats = await getWorkingDaysStats(
             referenceDate,
-            state,
+            stateCode,
             workingDays,
             this.helpers,
           );
@@ -254,7 +257,7 @@ export class WorkingDays implements INodeType {
           result = {
             operation: "getStats",
             referenceDate: referenceDate.toISO(),
-            state,
+            state: stateCode,
             workingDays,
             statistics: {
               day: convertPeriodStats(stats.day, includeBreakdown),
@@ -273,7 +276,7 @@ export class WorkingDays implements INodeType {
           // For range calculation, we need to fetch holidays for the entire range
           const years = [...new Set([fromDate.year, toDate.year])].join(",");
 
-          const url = `https://get.api-feiertage.de/?years=${years}&states=${state}`;
+          const url = `https://get.api-feiertage.de/?years=${years}&states=${stateCode}`;
 
           const holidayResponse = (await this.helpers.httpRequest({
             url,
@@ -299,7 +302,7 @@ export class WorkingDays implements INodeType {
             operation: "calculateRange",
             fromDate: fromDate.toISO(),
             toDate: toDate.toISO(),
-            state,
+            state: stateCode,
             workingDays,
             statistics: {
               totals: stats.totals,

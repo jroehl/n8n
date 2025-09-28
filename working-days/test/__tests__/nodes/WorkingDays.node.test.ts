@@ -98,7 +98,7 @@ describe('WorkingDays Node', () => {
       
       const output = result[0][0].json as any;
       expect(output.operation).toBe('getStats');
-      expect(output.state).toBe('BE');
+      expect(output.state).toBe('be');
       expect(output.statistics).toBeDefined();
       expect(output.statistics.day).toBeDefined();
       expect(output.statistics.week).toBeDefined();
@@ -223,7 +223,7 @@ describe('WorkingDays Node', () => {
       
       // Verify API was called with both years
       expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
-        url: 'https://get.api-feiertage.de/?years=2023,2024&states=BE',
+        url: 'https://get.api-feiertage.de/?years=2023,2024&states=be',
         method: 'GET',
         json: true,
       });

@@ -117,14 +117,14 @@ describe('workingDays utils', () => {
       
       const stats = await getWorkingDaysStats(
         requestDate,
-        'BE',
+        'be',
         workingDays,
         httpRequestHelper
       );
       
       // Verify API was called correctly
       expect(httpRequestHelper.httpRequest).toHaveBeenCalledWith({
-        url: 'https://get.api-feiertage.de/?years=2024&states=BE',
+        url: 'https://get.api-feiertage.de/?years=2024&states=be',
         method: 'GET',
         json: true,
       });
@@ -148,14 +148,14 @@ describe('workingDays utils', () => {
       
       await getWorkingDaysStats(
         requestDate,
-        'BE',
+        'be',
         workingDays,
         httpRequestHelper
       );
       
       // When at year end, it should still only request current year
       expect(httpRequestHelper.httpRequest).toHaveBeenCalledWith({
-        url: 'https://get.api-feiertage.de/?years=2024&states=BE',
+        url: 'https://get.api-feiertage.de/?years=2024&states=be',
         method: 'GET',
         json: true,
       });
@@ -181,7 +181,7 @@ describe('workingDays utils', () => {
       
       const stats = await getWorkingDaysStats(
         requestDate,
-        'BE',
+        'be',
         workingDays,
         httpRequestHelper
       );
@@ -201,13 +201,13 @@ describe('workingDays utils', () => {
       
       await getWorkingDaysStats(
         requestDate,
-        'BY',
+        'by',
         workingDays,
         httpRequestHelper
       );
       
       expect(httpRequestHelper.httpRequest).toHaveBeenCalledWith({
-        url: 'https://get.api-feiertage.de/?years=2024&states=BY',
+        url: 'https://get.api-feiertage.de/?years=2024&states=by',
         method: 'GET',
         json: true,
       });
@@ -219,7 +219,7 @@ describe('workingDays utils', () => {
       
       const stats = await getWorkingDaysStats(
         requestDate,
-        'BE',
+        'be',
         workingDays,
         httpRequestHelper
       );
@@ -256,7 +256,7 @@ describe('workingDays utils', () => {
       
       const stats = await getWorkingDaysStats(
         requestDate,
-        'BE',
+        'be',
         workingDays,
         httpRequestHelper
       );
@@ -280,7 +280,7 @@ describe('workingDays utils', () => {
       
       const stats = await getWorkingDaysStats(
         requestDate,
-        'BE',
+        'be',
         workingDays,
         httpRequestHelper
       );
