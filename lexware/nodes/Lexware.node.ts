@@ -141,7 +141,31 @@ export class Lexware implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: ['invoices', 'credit-notes', 'delivery-notes'],
+						resource: ['invoices'],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get an item by ID',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new item',
+					},
+				],
+				default: 'get',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['credit-notes', 'delivery-notes'],
 					},
 				},
 				options: [
@@ -337,7 +361,7 @@ export class Lexware implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: ['contacts', 'articles', 'invoices', 'credit-notes', 'delivery-notes'],
+						resource: ['contacts', 'articles', 'credit-notes', 'delivery-notes'],
 						operation: ['getAll'],
 					},
 				},
@@ -373,7 +397,7 @@ export class Lexware implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['contacts', 'articles', 'invoices', 'credit-notes', 'delivery-notes'],
+						resource: ['contacts', 'articles', 'credit-notes', 'delivery-notes'],
 						operation: ['getAll'],
 					},
 				},
@@ -386,12 +410,51 @@ export class Lexware implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['contacts', 'articles', 'invoices', 'credit-notes', 'delivery-notes'],
+						resource: ['contacts', 'articles', 'credit-notes', 'delivery-notes'],
 						operation: ['getAll'],
 					},
 				},
 				default: 25,
 				description: 'Number of items per page (max 250)',
+			},
+			// Rate limiting options
+			{
+				displayName: 'Rate Limiting Options',
+				name: 'rateLimitOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Enable Rate Limiting',
+						name: 'enableRateLimit',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to handle rate limiting automatically',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						type: 'number',
+						default: 3,
+						description: 'Maximum number of retries on rate limit (429) errors',
+					},
+					{
+						displayName: 'Base Delay (ms)',
+						name: 'baseDelay',
+						type: 'number',
+						default: 1000,
+						description: 'Base delay in milliseconds between retries',
+					},
+					{
+						displayName: 'Max Delay (ms)',
+						name: 'maxDelay',
+						type: 'number',
+						default: 30000,
+						description: 'Maximum delay in milliseconds between retries',
+					},
+				],
+				description: 'Configure rate limiting behavior',
 			},
 			// Voucherlist specific fields
 			{
@@ -572,8 +635,50 @@ export class Lexware implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
+		// Rate limiting helper function
+		const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
+		const makeRequestWithRetry = async (options: IHttpRequestOptions, rateLimitOptions: any): Promise<any> => {
+			const { enableRateLimit = true, maxRetries = 3, baseDelay = 1000, maxDelay = 30000 } = rateLimitOptions;
+			
+			let lastError: Error | null = null;
+			
+			for (let attempt = 0; attempt <= maxRetries; attempt++) {
+				try {
+					return await this.helpers.httpRequest(options);
+				} catch (error: any) {
+					lastError = error;
+					
+					// Check if it's a rate limit error (429) and rate limiting is enabled
+					if (enableRateLimit && error.response?.status === 429 && attempt < maxRetries) {
+						// Calculate delay with exponential backoff
+						const exponentialDelay = baseDelay * Math.pow(2, attempt);
+						const jitterDelay = exponentialDelay + (Math.random() * 1000); // Add jitter
+						const delayMs = Math.min(jitterDelay, maxDelay);
+						
+						// Check if Retry-After header is present
+						const retryAfter = error.response?.headers?.['retry-after'];
+						const finalDelayMs = retryAfter ? parseInt(retryAfter) * 1000 : delayMs;
+						
+						console.log(`Rate limit hit (429). Retrying after ${finalDelayMs}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+						await sleep(finalDelayMs);
+						continue;
+					}
+					
+					// For other errors or if rate limiting is disabled, throw immediately
+					throw error;
+				}
+			}
+			
+			// If we get here, all retries have been exhausted
+			throw lastError;
+		};
+
 		for (let i = 0; i < items.length; i++) {
 			try {
+				// Get rate limiting options
+				const rateLimitOptions = this.getNodeParameter('rateLimitOptions', i, {}) as IDataObject;
+				
 				let responseData;
 				let url = '';
 				let method: IHttpRequestMethods = 'GET';
@@ -736,8 +841,8 @@ export class Lexware implements INodeType {
 						url = `https://api.lexware.io/v1/${resource}`;
 						body = this.getNodeParameter('data', i) as IDataObject;
 						headers['Content-Type'] = 'application/json';
-					} else {
-						// getAll
+					} else if (operation === 'getAll' && (resource === 'credit-notes' || resource === 'delivery-notes')) {
+						// getAll operation for credit-notes and delivery-notes
 						const queryParams: string[] = [];
 						const page = this.getNodeParameter('page', i, 0) as number;
 						const size = this.getNodeParameter('size', i, 25) as number;
@@ -771,7 +876,7 @@ export class Lexware implements INodeType {
 					options.body = body;
 				}
 
-				responseData = await this.helpers.httpRequest(options);
+				responseData = await makeRequestWithRetry(options, rateLimitOptions);
 				
 				// Handle different response structures
 				if (operation === 'download' && resource === 'files') {
