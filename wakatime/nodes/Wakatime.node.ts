@@ -110,8 +110,8 @@ export class Wakatime implements INodeType {
 					const branches = this.getNodeParameter('branches', i) as string;
 
 					const today = new Date().toISOString().split('T')[0];
-					const startDate = start ? new Date(start).toISOString().split('T')[0] : today;
-					const endDate = end ? new Date(end).toISOString().split('T')[0] : today;
+					const startDate = start ? start.split('T')[0] : today;
+					const endDate = end ? end.split('T')[0] : today;
 
 					const queryParams: any = {
 						start: startDate,
