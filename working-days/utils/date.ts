@@ -12,10 +12,6 @@ export const DAYS: readonly Day[] = [
   'Saturday'
 ] as const;
 
-export function getTimeZoneOffset(date: DateTime): number {
-  // Luxon automatically handles timezone offsets
-  return date.offset / 60;
-}
 
 export function getIsoFormattedDay(date: DateTime): string {
   return date.toISODate()!;

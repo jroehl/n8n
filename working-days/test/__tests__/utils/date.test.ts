@@ -2,7 +2,6 @@ import { DateTime } from 'luxon';
 import {
   Day,
   DAYS,
-  getTimeZoneOffset,
   getIsoFormattedDay,
   getFirstAndLastTimeOfDay,
   getFirstAndLastDayOfMonth,
@@ -33,17 +32,6 @@ describe('date utils', () => {
     });
   });
 
-  describe('getTimeZoneOffset', () => {
-    it('should return timezone offset in hours', () => {
-      const date = DateTime.fromISO('2024-01-15T12:00:00+02:00', { setZone: true });
-      expect(getTimeZoneOffset(date)).toBe(2);
-    });
-
-    it('should handle negative offsets', () => {
-      const date = DateTime.fromISO('2024-01-15T12:00:00-05:00', { setZone: true });
-      expect(getTimeZoneOffset(date)).toBe(-5);
-    });
-  });
 
   describe('getIsoFormattedDay', () => {
     it('should return ISO formatted date string', () => {
